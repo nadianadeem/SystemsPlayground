@@ -10,10 +10,22 @@
 #include <queue>
 #include <vector>
 
+class LinearAllocator;
+
+//----------------- Job System ----------------//
+
+struct JobHandle {
+    std::shared_ptr<std::atomic<int>> counter;
+};
+
 class JobSystem {
 public:
     JobSystem();
     ~JobSystem();
+
+    LinearAllocator& GetScratchAllocator();
+
+    bool IsWorkerThread() const;
 
     void ParallelFor(size_t count, std::function<void(size_t)> func, size_t batchSize = 1);
 
@@ -27,10 +39,12 @@ public:
         }, batchSize);
     }
 
+    JobHandle Submit(std::function<void()> job);
+    JobHandle SubmitAfter(const JobHandle& dependency, std::function<void()> job);
 
-
-    void Submit(std::function<void()> job);
     void Wait();
+    void Wait(const JobHandle& handle);
+    void Wait(const std::vector<JobHandle>& handles);
 
 private:
     void WorkerLoop();
@@ -43,5 +57,6 @@ private:
     std::condition_variable m_condition;
 
     std::atomic<int> m_jobsInFlight = 0;
+    thread_local static int s_workerIndex;
 };
 
