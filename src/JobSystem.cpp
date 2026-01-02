@@ -40,8 +40,6 @@ JobSystem::~JobSystem()
 {
 	m_running = false;
 
-	// Wake all threads (we’ll add the condition variable later)
-	// For now, just join them.
 	for (auto& worker : m_workers) {
 		if (worker.joinable())
 			worker.join();
