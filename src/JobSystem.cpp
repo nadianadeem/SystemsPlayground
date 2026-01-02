@@ -12,146 +12,146 @@ thread_local int JobSystem::s_workerIndex = -1;
 constexpr size_t SCRATCH_SIZE = 16 * 1024 * 1024; // 16MB
 std::vector<std::unique_ptr<LinearAllocator>> m_scratchAllocators;
 
-JobSystem::JobSystem() 
+JobSystem::JobSystem()
 {
-    unsigned int threadCount = std::thread::hardware_concurrency();
-    if (threadCount == 0) threadCount = 4;
+	unsigned int threadCount = std::thread::hardware_concurrency();
+	if (threadCount == 0) threadCount = 4;
 
-    unsigned int workerCount = threadCount - 1;
-    m_workers.reserve(workerCount);
-    m_scratchAllocators.reserve(workerCount);
+	unsigned int workerCount = threadCount - 1;
+	m_workers.reserve(workerCount);
+	m_scratchAllocators.reserve(workerCount);
 
-    size_t perThreadScratch = SCRATCH_SIZE / workerCount;
+	size_t perThreadScratch = SCRATCH_SIZE / workerCount;
 
-    for (unsigned int i = 0; i < workerCount; ++i) {
-        m_scratchAllocators.emplace_back(
-            std::make_unique<LinearAllocator>(perThreadScratch)
-        );
+	for (unsigned int i = 0; i < workerCount; ++i) {
+		m_scratchAllocators.emplace_back(
+			std::make_unique<LinearAllocator>(perThreadScratch)
+		);
 
-        m_workers.emplace_back([this, i] {
-            JobSystem::s_workerIndex = i;
-            WorkerLoop();
-        });
-    }
+		m_workers.emplace_back([this, i] {
+			JobSystem::s_workerIndex = i;
+			WorkerLoop();
+			});
+	}
 }
 
 
-JobSystem::~JobSystem() 
+JobSystem::~JobSystem()
 {
-    m_running = false;
+	m_running = false;
 
-    // Wake all threads (we’ll add the condition variable later)
-    // For now, just join them.
-    for (auto& worker : m_workers) {
-        if (worker.joinable())
-            worker.join();
-    }
+	// Wake all threads (we’ll add the condition variable later)
+	// For now, just join them.
+	for (auto& worker : m_workers) {
+		if (worker.joinable())
+			worker.join();
+	}
 }
 
 LinearAllocator& JobSystem::GetScratchAllocator()
 {
-    assert(s_workerIndex >= 0 && "GetScratchAllocator() called from a non-worker thread");
+	assert(s_workerIndex >= 0 && "GetScratchAllocator() called from a non-worker thread");
 	return *m_scratchAllocators[JobSystem::s_workerIndex];
 }
 
 bool JobSystem::IsWorkerThread() const
 {
-    return s_workerIndex >= 0;
+	return s_workerIndex >= 0;
 }
 
 void JobSystem::ParallelFor(size_t count, std::function<void(size_t)> func, size_t batchSize) {
-    if (count == 0)
-        return;
+	if (count == 0)
+		return;
 
-    size_t jobCount = (count + batchSize - 1) / batchSize;
+	size_t jobCount = (count + batchSize - 1) / batchSize;
 
-    for (size_t jobIndex = 0; jobIndex < jobCount; ++jobIndex) {
-        Submit([=] {
-            size_t start = jobIndex * batchSize;
-            size_t end = std::min(start + batchSize, count);
+	for (size_t jobIndex = 0; jobIndex < jobCount; ++jobIndex) {
+		Submit([=] {
+			size_t start = jobIndex * batchSize;
+			size_t end = std::min(start + batchSize, count);
 
-            for (size_t i = start; i < end; ++i) {
-                func(i);
-            }
-        });
-    }
+			for (size_t i = start; i < end; ++i) {
+				func(i);
+			}
+			});
+	}
 
-    Wait();
+	Wait();
 }
 
 JobHandle JobSystem::Submit(std::function<void()> job) {
-    JobHandle handle;
-    handle.counter = std::make_shared<std::atomic<int>>(1);
+	JobHandle handle;
+	handle.counter = std::make_shared<std::atomic<int>>(1);
 
-    {
-        std::lock_guard<std::mutex> lock(m_queueMutex);
-        m_jobQueue.push([job, handle] {
-            job();
-            (*handle.counter)--;
-        });
-        m_jobsInFlight++;
-    }
+	{
+		std::lock_guard<std::mutex> lock(m_queueMutex);
+		m_jobQueue.push([job, handle] {
+			job();
+			(*handle.counter)--;
+			});
+		m_jobsInFlight++;
+	}
 
-    m_condition.notify_one();
-    return handle;
+	m_condition.notify_one();
+	return handle;
 }
 
 JobHandle JobSystem::SubmitAfter(const JobHandle& dependency, std::function<void()> job)
 {
-    return Submit([=] 
-    {
-		Wait(dependency);
-        job(); 
-    });
+	return Submit([=]
+		{
+			Wait(dependency);
+			job();
+		});
 }
 
 void JobSystem::Wait() {
-    while (m_jobsInFlight > 0) {
-        std::this_thread::yield();
-    }
+	while (m_jobsInFlight > 0) {
+		std::this_thread::yield();
+	}
 }
 
 void JobSystem::Wait(const JobHandle& handle)
 {
-    while (handle.counter->load() > 0) {
-        std::this_thread::yield();
+	while (handle.counter->load() > 0) {
+		std::this_thread::yield();
 	}
 }
 
 void JobSystem::Wait(const std::vector<JobHandle>& handles)
 {
-    for (const auto& handle : handles) {
-        Wait(handle);
+	for (const auto& handle : handles) {
+		Wait(handle);
 	}
 }
 
-void JobSystem::WorkerLoop() 
+void JobSystem::WorkerLoop()
 {
-    while (m_running) 
-    {
-        
-        std::function<void()> job;
+	while (m_running)
+	{
 
-        {
-            std::unique_lock<std::mutex> lock(m_queueMutex);
+		std::function<void()> job;
 
-            // Sleep until there is a job or shutdown
-            m_condition.wait(lock, [&] {
-                return !m_jobQueue.empty() || !m_running;
-            });
+		{
+			std::unique_lock<std::mutex> lock(m_queueMutex);
 
-            if (!m_running)
-                return;
+			// Sleep until there is a job or shutdown
+			m_condition.wait(lock, [&] {
+				return !m_jobQueue.empty() || !m_running;
+				});
 
-            job = std::move(m_jobQueue.front());
-            m_jobQueue.pop();
-        }
+			if (!m_running)
+				return;
 
-        // Execute job outside the lock
-        job();
+			job = std::move(m_jobQueue.front());
+			m_jobQueue.pop();
+		}
 
-        m_scratchAllocators[s_workerIndex]->Reset();
-        m_jobsInFlight--;
-    }
+		// Execute job outside the lock
+		job();
+
+		m_scratchAllocators[s_workerIndex]->Reset();
+		m_jobsInFlight--;
+	}
 }
 
