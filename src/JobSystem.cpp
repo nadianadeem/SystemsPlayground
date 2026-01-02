@@ -31,6 +31,26 @@ JobSystem::~JobSystem()
     }
 }
 
+void JobSystem::ParallelFor(size_t count, std::function<void(size_t)> func, size_t batchSize) {
+    if (count == 0)
+        return;
+
+    size_t jobCount = (count + batchSize - 1) / batchSize;
+
+    for (size_t jobIndex = 0; jobIndex < jobCount; ++jobIndex) {
+        Submit([=] {
+            size_t start = jobIndex * batchSize;
+            size_t end = std::min(start + batchSize, count);
+
+            for (size_t i = start; i < end; ++i) {
+                func(i);
+            }
+        });
+    }
+
+    Wait();
+}
+
 void JobSystem::Submit(std::function<void()> job) 
 {
     {

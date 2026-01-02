@@ -3,6 +3,7 @@
 #include "LinearAllocator.h"
 
 #include <iostream>
+#include <vector>
 
 int main() {
     LinearAllocator allocator(1024); // 1 KB
@@ -26,7 +27,21 @@ int main() {
         });
     }
 
-    jobSystem.Wait();
+    const size_t count = 1000;
+    std::vector<int> data(count);
+
+    for (int i = 0; i < data.size(); ++i) { data[i] = i; }
+
+    /*jobSystem.ParallelFor(count, [&](size_t i) {
+        data[i] = int(i * 2);
+    }, 64);*/
+
+    jobSystem.ParallelForEach(data, [](int& value) {
+        value = value * 3;
+        }, 64);     
+
+    for (int i = 0; i < 100; ++i)
+        std::cout << data[i] << " ";
 
 	std::cin >> std::ws;
 
