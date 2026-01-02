@@ -1,5 +1,7 @@
 
+#include "JobSystem.h"
 #include "LinearAllocator.h"
+
 #include <iostream>
 
 int main() {
@@ -11,10 +13,20 @@ int main() {
 
     for (int i = 0; i < 100; ++i) {
         numbers[i] = i * 3;
-        std::cout << numbers[i] << " ";
+        std::cout << numbers[i] << " " << std::endl;
     }
 
 	allocator.Reset(); // numbers is now invalid
+
+	JobSystem jobSystem;
+
+    for (int i = 0; i < 10; ++i) {
+        jobSystem.Submit([i] {
+            std::cout << "Job " << i << " running on thread " << std::this_thread::get_id() << std::endl;
+        });
+    }
+
+    jobSystem.Wait();
 
 	std::cin >> std::ws;
 
