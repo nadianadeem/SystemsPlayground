@@ -116,6 +116,11 @@
   <ItemGroup>
     <ClInclude Include="CoreTests\pch.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Engine\SystemsPlayground.vcxproj">
+      <Project>{549625d2-b32c-49cf-98f2-8a30ec69fc3a}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\..\packages\Microsoft.googletest.v140.windesktop.msvcstl.static.rt-dyn.1.8.1.8\build\native\Microsoft.googletest.v140.windesktop.msvcstl.static.rt-dyn.targets" Condition="Exists('..\..\packages\Microsoft.googletest.v140.windesktop.msvcstl.static.rt-dyn.1.8.1.8\build\native\Microsoft.googletest.v140.windesktop.msvcstl.static.rt-dyn.targets')" />
