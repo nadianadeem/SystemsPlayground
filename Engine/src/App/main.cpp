@@ -1,6 +1,6 @@
 
-#include "Core/JobSystem.h"
-#include "Core/LinearAllocator.h"
+#include "../Core/Jobsystem.h"
+#include "../Core/LinearAllocator.h"
 
 #include <iostream>
 #include <vector>
