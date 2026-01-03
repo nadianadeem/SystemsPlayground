@@ -10,7 +10,6 @@
 thread_local int JobSystem::s_workerIndex = -1;
 
 constexpr size_t SCRATCH_SIZE = 16 * 1024 * 1024; // 16MB
-std::vector<std::unique_ptr<LinearAllocator>> m_scratchAllocators;
 
 JobSystem::JobSystem()
 {
@@ -35,15 +34,17 @@ JobSystem::JobSystem()
 	}
 }
 
-
 JobSystem::~JobSystem()
 {
-	m_running = false;
-
-	for (auto& worker : m_workers) {
-		if (worker.joinable())
-			worker.join();
+	{
+		std::unique_lock lock(m_queueMutex);
+		m_shutdown = true;
 	}
+
+	m_condition.notify_all();
+
+	for (auto& t : m_workers)
+		t.join();
 }
 
 LinearAllocator& JobSystem::GetScratchAllocator()
@@ -77,17 +78,20 @@ void JobSystem::ParallelFor(size_t count, std::function<void(size_t)> func, size
 	Wait();
 }
 
-JobHandle JobSystem::Submit(std::function<void()> job) {
+JobHandle JobSystem::Submit(std::function<void()> job) 
+{
 	JobHandle handle;
 	handle.counter = std::make_shared<std::atomic<int>>(1);
 
 	{
 		std::lock_guard<std::mutex> lock(m_queueMutex);
+
 		m_jobQueue.push([job, handle] {
 			job();
-			(*handle.counter)--;
+			handle.counter->fetch_sub(1, std::memory_order_release);
 			});
-		m_jobsInFlight++;
+
+		m_jobsInFlight.fetch_add(1, std::memory_order_relaxed);
 	}
 
 	m_condition.notify_one();
@@ -96,11 +100,11 @@ JobHandle JobSystem::Submit(std::function<void()> job) {
 
 JobHandle JobSystem::SubmitAfter(const JobHandle& dependency, std::function<void()> job)
 {
-	return Submit([=]
-		{
-			Wait(dependency);
-			job();
-		});
+	return Submit([=] 
+	{
+		Wait(dependency);
+		job();
+	});
 }
 
 void JobSystem::Wait() {
@@ -111,7 +115,8 @@ void JobSystem::Wait() {
 
 void JobSystem::Wait(const JobHandle& handle)
 {
-	while (handle.counter->load() > 0) {
+	while (handle.counter->load(std::memory_order_acquire) > 0) 
+	{
 		std::this_thread::yield();
 	}
 }
@@ -125,31 +130,29 @@ void JobSystem::Wait(const std::vector<JobHandle>& handles)
 
 void JobSystem::WorkerLoop()
 {
-	while (m_running)
+	while (true)
 	{
-
 		std::function<void()> job;
 
 		{
 			std::unique_lock<std::mutex> lock(m_queueMutex);
 
-			// Sleep until there is a job or shutdown
 			m_condition.wait(lock, [&] {
-				return !m_jobQueue.empty() || !m_running;
+				return m_shutdown || !m_jobQueue.empty();
 				});
 
-			if (!m_running)
-				return;
+			if (m_shutdown && m_jobQueue.empty())
+				break;
 
 			job = std::move(m_jobQueue.front());
 			m_jobQueue.pop();
 		}
 
-		// Execute job outside the lock
 		job();
 
 		m_scratchAllocators[s_workerIndex]->Reset();
-		m_jobsInFlight--;
+		m_jobsInFlight.fetch_sub(1, std::memory_order_release);
 	}
 }
+
 

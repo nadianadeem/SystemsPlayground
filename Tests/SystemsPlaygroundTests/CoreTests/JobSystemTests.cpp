@@ -5,10 +5,11 @@
 
 #include <gtest/gtest.h>
 
-TEST(JobSystem, JobRunsWhenSubmitted) {
+TEST(JobSystem, JobRunsWhenSubmitted) 
+{
     JobSystem jobs;
-
     bool ran = false;
+
     auto h = jobs.Submit([&] { ran = true; });
 
     jobs.Wait(h);

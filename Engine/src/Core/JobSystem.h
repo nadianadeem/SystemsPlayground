@@ -50,7 +50,6 @@ private:
 	void WorkerLoop();
 
 	std::vector<std::thread> m_workers;
-	std::atomic<bool> m_running = true;
 
 	std::queue<std::function<void()>> m_jobQueue;
 	std::mutex m_queueMutex;
@@ -58,5 +57,8 @@ private:
 
 	std::atomic<int> m_jobsInFlight = 0;
 	thread_local static int s_workerIndex;
+	std::atomic<bool> m_shutdown = false;
+
+	std::vector<std::unique_ptr<LinearAllocator>> m_scratchAllocators;
 };
 
