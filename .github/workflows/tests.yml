@@ -1,0 +1,32 @@
+name: Engine CI (MSBuild + GoogleTest)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Restore NuGet packages
+      run: nuget restore YourSolution.sln
+
+    - name: Build solution (Debug)
+      run: msbuild YourSolution.sln /p:Configuration=Debug /m
+
+    - name: Run Google Tests and produce XML report
+      run: |
+        .\Build\x64\Debug\SystemsPlaygroundTests.exe --gtest_output=xml:test_results.xml
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: gtest-results
+        path: test_results.xml
