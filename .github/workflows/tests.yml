@@ -30,7 +30,7 @@ jobs:
 
     - name: Run Google Tests and produce XML report
       run: |
-        .\Tests\SystemPlaygroundTests\build\x64\Debug\SystemsPlaygroundTests.exe --gtest_output=xml:test_results.xml
+        Tests\SystemsPlaygroundTests\build\x64\Debug\SystemsPlaygroundTests.exe --gtest_output=xml:test_results.xml
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
