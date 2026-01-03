@@ -23,7 +23,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Restore NuGet packages
-      run: nuget restore SystemsPlayground.sln
+      run: nuget restore SystemsPlayground.slnx
 
     - name: Build solution (Debug)
       run: msbuild SystemsPlayground.slnx /p:Configuration=Debug /m
