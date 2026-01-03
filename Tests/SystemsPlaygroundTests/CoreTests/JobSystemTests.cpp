@@ -1,5 +1,7 @@
 
-#include "../../Engine/src/Core/JobSystem.h"
+#include "pch.h"
+
+#include "../../../Engine/src/Core/JobSystem.h"
 
 #include <gtest/gtest.h>
 

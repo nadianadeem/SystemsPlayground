@@ -9,11 +9,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="LinearAllocatorTests.cpp">
+    <ClCompile Include="CoreTests\JobSystemTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="JobSystemTests.cpp">
+    <ClCompile Include="CoreTests\LinearAllocatorTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CoreTests\pch.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CoreTests\pch.h" />
   </ItemGroup>
 </Project>
