@@ -16,10 +16,10 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Restore NuGet packages
-      run: nuget restore YourSolution.sln
+      run: nuget restore SystemsPlayground.sln
 
     - name: Build solution (Debug)
-      run: msbuild YourSolution.sln /p:Configuration=Debug /m
+      run: msbuild SystemsPlayground.sln /p:Configuration=Debug /m
 
     - name: Run Google Tests and produce XML report
       run: |
