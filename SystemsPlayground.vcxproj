@@ -19,13 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\JobSystem.cpp" />
-    <ClCompile Include="src\LinearAllocator.cpp" />
-    <ClCompile Include="src\main.cpp" />
+    <ClInclude Include="src\Core\JobSystem.h" />
+    <ClInclude Include="src\Core\LinearAllocator.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\JobSystem.h" />
-    <ClInclude Include="src\LinearAllocator.h" />
+    <ClCompile Include="src\App\main.cpp" />
+    <ClCompile Include="src\Core\JobSystem.cpp" />
+    <ClCompile Include="src\Core\LinearAllocator.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
