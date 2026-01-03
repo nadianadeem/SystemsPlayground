@@ -34,8 +34,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>./Build/$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>./Build/$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>.\build\$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.\build\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
