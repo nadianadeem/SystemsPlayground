@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="src\Core\JobSystem.h" />
     <ClInclude Include="src\Core\LinearAllocator.h" />
+    <ClInclude Include="src\World\Tile.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\JobSystem.cpp" />
