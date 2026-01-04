@@ -3,6 +3,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="App/SystemsPlaygroundApp/SystemsPlaygroundApp.vcxproj" Id="b75cf20f-5332-4cc4-a597-847d2220e6f4" />
   <Project Path="Engine/SystemsPlayground.vcxproj" Id="549625d2-b32c-49cf-98f2-8a30ec69fc3a" />
   <Project Path="Tests/SystemsPlaygroundTests/SystemsPlaygroundTests.vcxproj" Id="e34b0569-85d6-44db-a028-5a968f192504" />
 </Solution>
