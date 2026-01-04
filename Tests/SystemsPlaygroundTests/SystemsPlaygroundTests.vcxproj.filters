@@ -16,6 +16,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CoreTests\pch.cpp" />
+    <ClCompile Include="WorldTests\WorldTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CoreTests\pch.h" />
