@@ -112,6 +112,7 @@
     <ClCompile Include="CoreTests\JobSystemTests.cpp" />
     <ClCompile Include="CoreTests\LinearAllocatorTests.cpp" />
     <ClCompile Include="CoreTests\pch.cpp" />
+    <ClCompile Include="WorldTests\WorldTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CoreTests\pch.h" />

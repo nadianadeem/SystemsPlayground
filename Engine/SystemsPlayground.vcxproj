@@ -21,10 +21,13 @@
   <ItemGroup>
     <ClInclude Include="src\Core\JobSystem.h" />
     <ClInclude Include="src\Core\LinearAllocator.h" />
+    <ClInclude Include="src\World\Tile.h" />
+    <ClInclude Include="src\World\World.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\JobSystem.cpp" />
     <ClCompile Include="src\Core\LinearAllocator.cpp" />
+    <ClCompile Include="src\World\World.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
