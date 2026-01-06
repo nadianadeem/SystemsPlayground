@@ -27,6 +27,9 @@
     <ClInclude Include="src\World\World.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\World\WorldUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\JobSystem.cpp">

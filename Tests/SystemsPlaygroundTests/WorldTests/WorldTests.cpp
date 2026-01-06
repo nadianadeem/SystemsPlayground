@@ -2,6 +2,7 @@
 #include "pch.h"
 
 #include "../../../Engine/src/World/World.h"
+#include "../../../Engine/src/World/WorldUtils.h"
 
 TEST(World, TileRetrievalAndCoordinates) 
 {
@@ -28,4 +29,31 @@ TEST(World, InvalidTileCoordinatesThrow)
 	EXPECT_THROW(world.GetTile(width, 0), std::out_of_range);
 	EXPECT_THROW(world.GetTile(0, height), std::out_of_range);
 	EXPECT_THROW(world.GetTile(width + 1, height + 1), std::out_of_range);
+}
+
+TEST(World, UpdateActiveTilesChangesTileStates) 
+{
+	const int width = 10;
+	const int height = 10;
+	World world(width, height);
+	const int playerX = 5;
+	const int playerY = 5;
+	const int activeRadius = 2;
+	const int loadRadius = 4;
+	world.UpdateActiveTiles(playerX, playerY, activeRadius, loadRadius);
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			Tile& tile = world.GetTile(x, y);
+			int dist = WorldUtils::TileDistance(x, y, playerX, playerY);
+			if (dist <= activeRadius) {
+				EXPECT_EQ(tile.state, TileState::Active);
+			}
+			else if (dist <= loadRadius) {
+				EXPECT_EQ(tile.state, TileState::Loaded);
+			}
+			else {
+				EXPECT_EQ(tile.state, TileState::Unloaded);
+			}
+		}
+	}
 }
