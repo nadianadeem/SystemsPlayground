@@ -23,6 +23,7 @@
     <ClInclude Include="src\Core\LinearAllocator.h" />
     <ClInclude Include="src\World\Tile.h" />
     <ClInclude Include="src\World\World.h" />
+    <ClInclude Include="src\World\WorldUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\JobSystem.cpp" />

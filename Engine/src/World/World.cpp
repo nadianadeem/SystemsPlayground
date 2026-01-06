@@ -1,6 +1,8 @@
 
 #include "World.h"
 
+#include "WorldUtils.h"
+
 #include <stdexcept>
 #include <cassert>
 
@@ -20,6 +22,28 @@ World::World(int width, int height)
         }
     }
 }
+
+void World::UpdateActiveTiles(int playerX, int playerY, int activeRadius, int loadRadius)
+{
+    for (int y = 0; y < m_height; ++y) {
+        for (int x = 0; x < m_width; ++x) {
+
+            Tile& tile = GetTile(x, y);
+            int dist = WorldUtils::TileDistance(x, y, playerX, playerY);
+
+            if (dist <= activeRadius) {
+                tile.state = TileState::Active;
+            }
+            else if (dist <= loadRadius) {
+                tile.state = TileState::Loaded;
+            }
+            else {
+                tile.state = TileState::Unloaded;
+            }
+        }
+    }
+}
+
 
 int World::Index(int x, int y) const
 {

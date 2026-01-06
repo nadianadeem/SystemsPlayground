@@ -9,6 +9,8 @@ class World {
 public:
     World(int width, int height);
 
+    void UpdateActiveTiles(int playerX, int playerY, int activeRadius, int loadRadius);
+
     int GetWidth() const { return m_width; }
     int GetHeight() const { return m_height; }
 
