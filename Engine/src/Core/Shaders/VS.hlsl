@@ -1,3 +1,7 @@
+cbuffer TransformCB : register(b0)
+{
+    row_major float4x4 transform;
+};
 
 struct VSInput
 {
@@ -14,7 +18,7 @@ struct PSInput
 PSInput main(VSInput input)
 {
     PSInput output;
-    output.pos = float4(input.pos, 1.0f);
+    output.pos = mul(float4(input.pos, 1.0f), transform);
     output.col = input.col;
     return output;
 }

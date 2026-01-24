@@ -22,6 +22,7 @@
     <ClInclude Include="src\Core\JobSystem.h" />
     <ClInclude Include="src\Core\LinearAllocator.h" />
     <ClInclude Include="src\Core\Renderer.h" />
+    <ClInclude Include="src\Core\TransformCB.h" />
     <ClInclude Include="src\Core\Vertex.h" />
     <ClInclude Include="src\Core\Window.h" />
     <ClInclude Include="src\World\Tile.h" />

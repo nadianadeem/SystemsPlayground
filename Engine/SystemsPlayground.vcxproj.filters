@@ -42,6 +42,9 @@
     <ClInclude Include="src\Core\Vertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Core\TransformCB.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\JobSystem.cpp">

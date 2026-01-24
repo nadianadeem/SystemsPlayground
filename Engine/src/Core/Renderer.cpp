@@ -1,6 +1,7 @@
 
 #include "Renderer.h"
 #include "Vertex.h"
+#include "TransformCB.h"
 
 #include <windows.h>
 #include <d3d11.h>
@@ -29,11 +30,23 @@ ID3DBlob* CompileShader(const wchar_t* file, const char* entry, const char* mode
     return shaderBlob;
 }
 
+void MakeTransform(float x, float y, float scale, TransformCB& out)
+{
+    float m[16] =
+    {
+        scale, 0,     0, 0,
+        0,     scale, 0, 0,
+        0,     0,     1, 0,
+        x,     y,     0, 1
+    };
+
+    memcpy(out.m, m, sizeof(m));
+}
+
+
 bool DX11Renderer::Init(HWND hwnd)
 {
-    //
-    // 1. Create the swap chain + device + context
-    //
+    // Create the swap chain + device + context
     DXGI_SWAP_CHAIN_DESC scd = {};
     scd.BufferCount = 1;
     scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -44,27 +57,38 @@ bool DX11Renderer::Init(HWND hwnd)
 
 	m_hwnd = hwnd;
 
-    HRESULT hr = D3D11CreateDeviceAndSwapChain(
-        nullptr,
-        D3D_DRIVER_TYPE_HARDWARE,
-        nullptr,
-        0,
-        nullptr,
-        0,
-        D3D11_SDK_VERSION,
-        &scd,
-        &m_swapChain,
-        &m_device,
-        nullptr,
-        &m_context
-    );
+    {
+        HRESULT hr = D3D11CreateDeviceAndSwapChain(
+            nullptr,
+            D3D_DRIVER_TYPE_HARDWARE,
+            nullptr,
+            0,
+            nullptr,
+            0,
+            D3D11_SDK_VERSION,
+            &scd,
+            &m_swapChain,
+            &m_device,
+            nullptr,
+            &m_context
+        );
 
+        if (FAILED(hr))
+            return false;
+    }
+
+
+	// Create Transform Constant Buffer
+    D3D11_BUFFER_DESC cbd = {};
+    cbd.Usage = D3D11_USAGE_DEFAULT;
+    cbd.ByteWidth = sizeof(TransformCB);
+    cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+    HRESULT hr = m_device->CreateBuffer(&cbd, nullptr, &m_transformCB);
     if (FAILED(hr))
         return false;
 
-    //
-    // 2. Create the render target view
-    //
+    // Render Target View
     ID3D11Texture2D* backBuffer = nullptr;
     m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
 
@@ -74,9 +98,7 @@ bool DX11Renderer::Init(HWND hwnd)
     if (FAILED(hr))
         return false;
 
-    //
-    // 3. Compile shaders
-    //
+    // Compile shaders
     ID3DBlob* vsBlob = nullptr;
     D3DReadFileToBlob(L"VS.cso", &vsBlob);
 
@@ -149,6 +171,21 @@ bool DX11Renderer::Init(HWND hwnd)
     return true;
 }
 
+void DX11Renderer::DrawQuad(float x, float y, float scale)
+{
+    // Build transform
+    TransformCB cb;
+    MakeTransform(x, y, scale, cb);
+
+    // Upload to GPU
+    m_context->UpdateSubresource(m_transformCB, 0, nullptr, &cb, 0, 0);
+
+    // Bind constant buffer
+    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
+
+    // Issue draw call
+    m_context->Draw(6, 0);
+}
 
 void DX11Renderer::RenderFrame()
 {
@@ -184,8 +221,22 @@ void DX11Renderer::RenderFrame()
     m_context->VSSetShader(m_vertexShader, nullptr, 0);
     m_context->PSSetShader(m_pixelShader, nullptr, 0);
 
-    // 5. Draw the quad
-    m_context->Draw(6, 0);
+    TransformCB cb;
+    MakeTransform(0.0f, 0.0f, 0.5f, cb); // center, half size
+
+    m_context->UpdateSubresource(m_transformCB, 0, nullptr, &cb, 0, 0);
+    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
+
+    for (int y = 0; y < 10; y++)
+    {
+        for (int x = 0; x < 10; x++)
+        {
+            float px = (x - 5) * 0.2f;
+            float py = (y - 5) * 0.2f;
+            DrawQuad(px, py, 0.1f);
+        }
+    }
+
 
     // 6. Present the frame
     m_swapChain->Present(1, 0);

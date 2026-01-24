@@ -6,6 +6,7 @@ class DX11Renderer
 {
 public:
     bool Init(HWND hwnd);
+    void DrawQuad(float x, float y, float scale);
     void RenderFrame();
     void Shutdown();
 
@@ -20,4 +21,6 @@ private:
     ID3D11InputLayout* m_inputLayout = nullptr;
     ID3D11VertexShader* m_vertexShader = nullptr;
     ID3D11PixelShader* m_pixelShader = nullptr;
+
+    ID3D11Buffer* m_transformCB = nullptr;
 };
