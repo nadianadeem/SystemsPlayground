@@ -14,4 +14,10 @@ private:
     ID3D11DeviceContext* m_context = nullptr;
     IDXGISwapChain* m_swapChain = nullptr;
     ID3D11RenderTargetView* m_rtv = nullptr;
+    HWND m_hwnd = nullptr;
+
+    ID3D11Buffer* m_vertexBuffer = nullptr;
+    ID3D11InputLayout* m_inputLayout = nullptr;
+    ID3D11VertexShader* m_vertexShader = nullptr;
+    ID3D11PixelShader* m_pixelShader = nullptr;
 };
