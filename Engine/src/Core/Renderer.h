@@ -1,0 +1,26 @@
+#pragma once
+
+#include <d3d11.h>
+
+class DX11Renderer
+{
+public:
+    bool Init(HWND hwnd);
+    void DrawQuad(float x, float y, float scale);
+    void RenderFrame();
+    void Shutdown();
+
+private:
+    ID3D11Device* m_device = nullptr;
+    ID3D11DeviceContext* m_context = nullptr;
+    IDXGISwapChain* m_swapChain = nullptr;
+    ID3D11RenderTargetView* m_rtv = nullptr;
+    HWND m_hwnd = nullptr;
+
+    ID3D11Buffer* m_vertexBuffer = nullptr;
+    ID3D11InputLayout* m_inputLayout = nullptr;
+    ID3D11VertexShader* m_vertexShader = nullptr;
+    ID3D11PixelShader* m_pixelShader = nullptr;
+
+    ID3D11Buffer* m_transformCB = nullptr;
+};
