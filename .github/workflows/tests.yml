@@ -37,3 +37,12 @@ jobs:
       with:
         name: gtest-results
         path: test_results.xml
+        
+    - name: Test Report
+      uses: dorny/test-reporter@v2
+      
+      if: ${{ !cancelled() }}       # run this step even if previous step failed
+      with:
+          name: JEST Tests            # Name of the check run which will be created
+          path: test_results.xml    # Path to test results
+          reporter: jest-junit        # Format of test results
