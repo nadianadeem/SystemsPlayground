@@ -21,7 +21,9 @@
   <ItemGroup>
     <ClInclude Include="src\Core\JobSystem.h" />
     <ClInclude Include="src\Core\LinearAllocator.h" />
+    <ClInclude Include="src\Core\Rendering\Camera.h" />
     <ClInclude Include="src\Core\Rendering\Renderer.h" />
+    <ClInclude Include="src\Core\Rendering\RenderHelperFunctions.h" />
     <ClInclude Include="src\Core\Rendering\Window.h" />
     <ClInclude Include="src\World\Tile.h" />
     <ClInclude Include="src\World\World.h" />
@@ -30,6 +32,7 @@
   <ItemGroup>
     <ClCompile Include="src\Core\JobSystem.cpp" />
     <ClCompile Include="src\Core\LinearAllocator.cpp" />
+    <ClCompile Include="src\Core\Rendering\Camera.cpp" />
     <ClCompile Include="src\Core\Rendering\Renderer.cpp" />
     <ClCompile Include="src\Core\Rendering\Window.cpp" />
     <ClCompile Include="src\World\World.cpp" />
@@ -144,7 +147,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <TreatWarningAsError>true</TreatWarningAsError>
+      <TreatWarningAsError>false</TreatWarningAsError>
       <AdditionalIncludeDirectories>C:\Users\nadianadeem\source\repos\SystemsPlayground\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

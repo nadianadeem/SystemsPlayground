@@ -3,40 +3,26 @@
 #include <d3d11.h>
 #include <DirectXMath.h>
 
+#include "Camera.h"
+
 using namespace DirectX;
-
-struct Camera2D
-{
-    float x = 0.0f;
-    float y = 0.0f;
-    float zoom = 1.0f;
-
-    // World units visible at zoom = 1
-    float viewWidth = 30.0f;
-    float viewHeight = 30.0f;
-};
-
 
 class DX11Renderer
 {
 public:
     bool Init(HWND hwnd);
-    void LoadShaders();
-    void LoadLineShaders();
+
+    bool LoadCSOFile(const LPCWSTR filenameVS, const LPCWSTR filenamePS, D3D11_INPUT_ELEMENT_DESC& inLayout, ID3D11VertexShader** outVS, ID3D11PixelShader** outPS, ID3D11InputLayout** outLayout);
+
     void CreateConstantBuffers();
     void CreateGeometry();
     void DrawQuad(float x, float y, float scale);
     void DrawLine(const XMFLOAT2& a, const XMFLOAT2& b, const XMFLOAT4& color);
     void DrawGrid();
     void RenderFrame();
-    XMFLOAT2 ScreenToWorld(int sx, int sy);
-    void UpdateCamera(float dt);
-    void OnMouseMove(int x, int y);
-    void OnMouseWheel(short delta);
     void Shutdown();
 
-    POINT m_lastMousePos = { 0, 0 };
-    bool m_middleDown = false;
+	Camera2D& GetCamera() { return m_camera; }
 
 private:
     ID3D11Device* m_device = nullptr;
@@ -55,7 +41,6 @@ private:
     ID3D11PixelShader* m_linePS = nullptr;
     ID3D11InputLayout* m_lineLayout = nullptr;
 
-    D3D11_VIEWPORT m_viewport;
     Camera2D m_camera;
     ID3D11Buffer* m_transformCB = nullptr;
 };

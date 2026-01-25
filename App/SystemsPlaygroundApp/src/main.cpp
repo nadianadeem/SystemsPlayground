@@ -1,6 +1,7 @@
 
-#include "../../../Engine/src/Core/Rendering/Window.h"
+#include "../../../Engine/src/Core/Rendering/Camera.h"
 #include "../../../Engine/src/Core/Rendering/Renderer.h"
+#include "../../../Engine/src/Core/Rendering/Window.h"
 #include "../../../Engine/src/Core/Structures/Vertex.h"
 
 #include <windows.h>
@@ -25,19 +26,19 @@ int main()
             {
                 case WM_MBUTTONDOWN:
                     SetCapture(window.GetHWND());
-                    renderer.m_middleDown = true;
-                    GetCursorPos(&renderer.m_lastMousePos);
+                    renderer.GetCamera().m_middleDown = true;
+                    GetCursorPos(&renderer.GetCamera().m_lastMousePos);
                     break;
 
                 case WM_MBUTTONUP:
                     ReleaseCapture();
-                    renderer.m_middleDown = false;
+                    renderer.GetCamera().m_middleDown = false;
                     break;
 
                 case WM_MOUSEWHEEL:
                 {
                     short delta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
-                    renderer.OnMouseWheel(delta);
+                    renderer.GetCamera().OnMouseWheel(delta, window.GetHWND());
                     break;
                 }
             
@@ -45,7 +46,7 @@ int main()
                 {
                     int x = GET_X_LPARAM(msg.lParam);
                     int y = GET_Y_LPARAM(msg.lParam);
-                    renderer.OnMouseMove(x, y);
+                    renderer.GetCamera().OnMouseMove(x, y);
                     break;
                 }
 
