@@ -37,5 +37,5 @@ Phase 6 — Debug visualisation
 - centre of mass
 - collision shapes
 
-Phase 7 — Terrain (optional but awesome)
-Once the vehicle works, terrain becomes meaningful.</p>
+Phase 7 — Terrain
+- Once the vehicle works, terrain becomes meaningful.</p>
