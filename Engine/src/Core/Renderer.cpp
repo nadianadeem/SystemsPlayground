@@ -7,6 +7,7 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <d3dcompiler.h>
+#include <chrono>
 
 #include <d3dcompiler.h>
 
@@ -43,6 +44,60 @@ void MakeTransform(float x, float y, float scale, TransformCB& out)
     memcpy(out.m, m, sizeof(m));
 }
 
+void MakeWorldMatrix(float x, float y, float scale, float out[16])
+{
+    float m[16] =
+    {
+        scale, 0,     0, 0,
+        0,     scale, 0, 0,
+        0,     0,     1, 0,
+        x,     y,     0, 1
+    };
+    memcpy(out, m, sizeof(m));
+}
+
+void MakeViewMatrix(const Camera2D& cam, float out[16])
+{
+    float m[16] =
+    {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -cam.x, -cam.y, 0, 1
+    };
+    memcpy(out, m, sizeof(m));
+}
+
+void MakeOrthoMatrix(float width, float height, float out[16])
+{
+    float m[16] =
+    {
+        2.0f / width, 0,               0, 0,
+        0,            2.0f / height,   0, 0,
+        0,            0,               1, 0,
+        0,            0,               0, 1
+    };
+    memcpy(out, m, sizeof(m));
+}
+
+void Multiply(const float a[16], const float b[16], float out[16])
+{
+    float r[16];
+
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int col = 0; col < 4; ++col)
+        {
+            r[row * 4 + col] =
+                a[row * 4 + 0] * b[0 * 4 + col] +
+                a[row * 4 + 1] * b[1 * 4 + col] +
+                a[row * 4 + 2] * b[2 * 4 + col] +
+                a[row * 4 + 3] * b[3 * 4 + col];
+        }
+    }
+
+    memcpy(out, r, sizeof(r));
+}
 
 bool DX11Renderer::Init(HWND hwnd)
 {
@@ -168,29 +223,56 @@ bool DX11Renderer::Init(HWND hwnd)
     if (FAILED(hr))
         return false;
 
+    m_camera.x = 0.0f;
+    m_camera.y = 0.0f;
+    m_camera.zoom = 1.0f;
+    m_camera.viewWidth = 2.0f;
+    m_camera.viewHeight = 2.0f;
+
     return true;
 }
 
 void DX11Renderer::DrawQuad(float x, float y, float scale)
 {
-    // Build transform
+    float world[16];
+    float view[16];
+    float proj[16];
+    float temp[16];
+    float mvp[16];
+
+    MakeWorldMatrix(x, y, scale, world);
+    MakeViewMatrix(m_camera, view);
+    MakeOrthoMatrix(m_camera.viewWidth / m_camera.zoom,
+        m_camera.viewHeight / m_camera.zoom,
+        proj);
+
+    Multiply(world, view, temp);
+    Multiply(temp, proj, mvp);
+
     TransformCB cb;
-    MakeTransform(x, y, scale, cb);
+    memcpy(cb.m, mvp, sizeof(mvp));
 
-    // Upload to GPU
     m_context->UpdateSubresource(m_transformCB, 0, nullptr, &cb, 0, 0);
-
-    // Bind constant buffer
     m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
 
-    // Issue draw call
     m_context->Draw(6, 0);
 }
 
+
 void DX11Renderer::RenderFrame()
 {
+    using clock = std::chrono::steady_clock;
+    static auto last = clock::now();
+
+    auto now = clock::now();
+    float dt = std::chrono::duration<float>(now - last).count();
+    last = now;
+
+    UpdateCamera(dt);
+
     // 1. Bind the render target
     m_context->OMSetRenderTargets(1, &m_rtv, nullptr);
+    m_context->RSSetViewports(1, &m_viewport);
 
     // 2. Clear the screen
     float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
@@ -221,12 +303,6 @@ void DX11Renderer::RenderFrame()
     m_context->VSSetShader(m_vertexShader, nullptr, 0);
     m_context->PSSetShader(m_pixelShader, nullptr, 0);
 
-    TransformCB cb;
-    MakeTransform(0.0f, 0.0f, 0.5f, cb); // center, half size
-
-    m_context->UpdateSubresource(m_transformCB, 0, nullptr, &cb, 0, 0);
-    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
-
     for (int y = 0; y < 10; y++)
     {
         for (int x = 0; x < 10; x++)
@@ -237,11 +313,81 @@ void DX11Renderer::RenderFrame()
         }
     }
 
-
     // 6. Present the frame
     m_swapChain->Present(1, 0);
 }
 
+XMFLOAT2 DX11Renderer::ScreenToWorld(int sx, int sy)
+{
+    float ndcX = (2.0f * sx / m_viewport.Width) - 1.0f;
+    float ndcY = 1.0f - (2.0f * sy / m_viewport.Height);
+
+    float worldX = m_camera.x + ndcX * (m_camera.viewWidth / m_camera.zoom) * 0.5f;
+    float worldY = m_camera.y + ndcY * (m_camera.viewHeight / m_camera.zoom) * 0.5f;
+
+    return { worldX, worldY };
+}
+
+void DX11Renderer::UpdateCamera(float dt)
+{
+    const float moveSpeed = 10.0f;   // world units per second
+    const float zoomSpeed = 1.5f;    // zoom multiplier per second
+
+    // Pan
+    if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+        m_camera.x -= moveSpeed * dt;
+
+    if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+        m_camera.x += moveSpeed * dt;
+
+    if (GetAsyncKeyState(VK_UP) & 0x8000)
+        m_camera.y += moveSpeed * dt;
+
+    if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+        m_camera.y -= moveSpeed * dt;
+
+    // Zoom in/out
+    if (GetAsyncKeyState('Q') & 0x8000)
+        m_camera.zoom *= (1.0f + zoomSpeed * dt);
+
+    if (GetAsyncKeyState('E') & 0x8000)
+        m_camera.zoom *= (1.0f - zoomSpeed * dt);
+
+    // Clamp zoom so it never flips or goes negative
+    if (m_camera.zoom < 0.1f)
+        m_camera.zoom = 0.1f;
+}
+
+void DX11Renderer::OnMouseMove(int x, int y)
+{
+    if (!m_middleDown)
+        return;
+
+    POINT current;
+    current.x = x;
+    current.y = y;
+
+    float dx = float(current.x - m_lastMousePos.x);
+    float dy = float(current.y - m_lastMousePos.y);
+
+    // Convert screen movement to world movement
+    float worldPerPixelX = (m_camera.viewWidth / m_camera.zoom) / m_viewport.Width;
+    float worldPerPixelY = (m_camera.viewHeight / m_camera.zoom) / m_viewport.Height;
+
+    m_camera.x -= dx * worldPerPixelX;
+    m_camera.y += dy * worldPerPixelY; // invert Y
+
+    m_lastMousePos = current;
+}
+
+void DX11Renderer::OnMouseWheel(short delta)
+{
+    float zoomFactor = 1.0f + (delta / 120.0f) * 0.1f;
+    m_camera.zoom *= zoomFactor;
+
+    if (m_camera.zoom < 0.1f)
+        m_camera.zoom = 0.1f;
+}
 
 void DX11Renderer::Shutdown()
 {
