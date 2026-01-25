@@ -21,10 +21,8 @@
   <ItemGroup>
     <ClInclude Include="src\Core\JobSystem.h" />
     <ClInclude Include="src\Core\LinearAllocator.h" />
-    <ClInclude Include="src\Core\Renderer.h" />
-    <ClInclude Include="src\Core\TransformCB.h" />
-    <ClInclude Include="src\Core\Vertex.h" />
-    <ClInclude Include="src\Core\Window.h" />
+    <ClInclude Include="src\Core\Rendering\Renderer.h" />
+    <ClInclude Include="src\Core\Rendering\Window.h" />
     <ClInclude Include="src\World\Tile.h" />
     <ClInclude Include="src\World\World.h" />
     <ClInclude Include="src\World\WorldUtils.h" />
@@ -32,31 +30,16 @@
   <ItemGroup>
     <ClCompile Include="src\Core\JobSystem.cpp" />
     <ClCompile Include="src\Core\LinearAllocator.cpp" />
-    <ClCompile Include="src\Core\Renderer.cpp" />
-    <ClCompile Include="src\Core\Window.cpp" />
+    <ClCompile Include="src\Core\Rendering\Renderer.cpp" />
+    <ClCompile Include="src\Core\Rendering\Window.cpp" />
     <ClCompile Include="src\World\World.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="src\Core\Shaders\PS.hlsl">
+    <FxCompile Include="src\Core\Rendering\Shaders\PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <FileType>Document</FileType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)App\SystemsPlaygroundApp\%(ObjectFileOutput)</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)App\SystemsPlaygroundApp\%(ObjectFileOutput)</ObjectFileOutput>
     </FxCompile>
-    <FxCompile Include="src\Core\Shaders\VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <FileType>Document</FileType>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)App\SystemsPlaygroundApp\%(ObjectFileOutput)</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)App\SystemsPlaygroundApp\%(ObjectFileOutput)</ObjectFileOutput>
-    </FxCompile>
+    <FxCompile Include="src\Core\Rendering\Shaders\VS.hlsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

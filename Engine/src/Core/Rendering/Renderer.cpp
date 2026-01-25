@@ -1,7 +1,7 @@
 
 #include "Renderer.h"
-#include "Vertex.h"
-#include "TransformCB.h"
+#include "..\Structures\TransformCB.h"
+#include "..\Structures\Vertex.h"
 
 #include <windows.h>
 #include <d3d11.h>
