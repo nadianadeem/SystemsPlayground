@@ -33,16 +33,10 @@
     <ClInclude Include="src\World\WorldUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Core\Renderer.h">
+    <ClInclude Include="src\Core\Rendering\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Core\Window.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Core\Vertex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Core\TransformCB.h">
+    <ClInclude Include="src\Core\Rendering\Window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -56,18 +50,18 @@
     <ClCompile Include="src\World\World.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Core\Renderer.cpp">
+    <ClCompile Include="src\Core\Rendering\Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Core\Window.cpp">
+    <ClCompile Include="src\Core\Rendering\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="src\Core\Shaders\VS.hlsl">
+    <FxCompile Include="src\Core\Rendering\Shaders\PS.hlsl">
       <Filter>Header Files\Shader Files</Filter>
     </FxCompile>
-    <FxCompile Include="src\Core\Shaders\PS.hlsl">
+    <FxCompile Include="src\Core\Rendering\Shaders\VS.hlsl">
       <Filter>Header Files\Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

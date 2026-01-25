@@ -1,7 +1,7 @@
 
-#include "../../../Engine/src/Core/Window.h"
-#include "../../../Engine/src/Core/Renderer.h"
-#include "../../../Engine/src/Core/Vertex.h"
+#include "../../../Engine/src/Core/Rendering/Window.h"
+#include "../../../Engine/src/Core/Rendering/Renderer.h"
+#include "../../../Engine/src/Core/Structures/Vertex.h"
 
 int main()
 {
