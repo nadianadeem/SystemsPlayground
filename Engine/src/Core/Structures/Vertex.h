@@ -8,3 +8,9 @@ struct Vertex
 	//Colour
 	float r, g, b, a;
 };
+
+struct LineVertex
+{
+	float x, y, z;
+	float r, g, b, a;
+};

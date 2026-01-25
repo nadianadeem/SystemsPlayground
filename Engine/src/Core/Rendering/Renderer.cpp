@@ -75,13 +75,27 @@ bool DX11Renderer::Init(HWND hwnd)
     m_context->RSSetViewports(1, &m_camera.viewport);
 
     // 6. Load/compile shaders (your existing code)
-    D3D11_INPUT_ELEMENT_DESC layout[] =
+    D3D11_INPUT_ELEMENT_DESC quadLayout[] =
     {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,                      D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, sizeof(float) * 3,     D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        // POSITION (float3) at offset 0
+        {
+            "POSITION", 0,
+            DXGI_FORMAT_R32G32B32_FLOAT,
+            0, 0,
+            D3D11_INPUT_PER_VERTEX_DATA, 0
+        },
+
+        // COLOR (float4) at offset 12
+        {
+            "COLOR", 0,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
+            0, 12,
+            D3D11_INPUT_PER_VERTEX_DATA, 0
+        }
     };
 
-    LoadCSOFile(L"VS.cso", L"PS.cso", *layout, &m_vertexShader, &m_pixelShader, &m_inputLayout);
+
+    LoadCSOFile(L"VS.cso", L"PS.cso", *quadLayout, _countof(quadLayout), &m_vertexShader, &m_pixelShader, &m_inputLayout);
     
     D3D11_INPUT_ELEMENT_DESC lineLayout[] =
     {
@@ -90,7 +104,7 @@ bool DX11Renderer::Init(HWND hwnd)
         { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12,
           D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
-	LoadCSOFile(L"LineVS.cso", L"LinePS.cso", *lineLayout, &m_lineVS, &m_linePS, &m_lineLayout);
+    LoadCSOFile(L"LineVS.cso", L"LinePS.cso", *lineLayout, _countof(lineLayout), &m_lineVS, &m_linePS, &m_lineLayout);
 
     // 7. Create input layout, buffers, etc.
     CreateGeometry();
@@ -99,7 +113,7 @@ bool DX11Renderer::Init(HWND hwnd)
     return true;
 }
 
-bool DX11Renderer::LoadCSOFile(const LPCWSTR filenameVS, const LPCWSTR filenamePS, D3D11_INPUT_ELEMENT_DESC& inLayout, ID3D11VertexShader** outVS, ID3D11PixelShader** outPS, ID3D11InputLayout** outLayout)
+bool DX11Renderer::LoadCSOFile(const LPCWSTR filenameVS, const LPCWSTR filenamePS, D3D11_INPUT_ELEMENT_DESC& inLayout, UINT layoutCount, ID3D11VertexShader** outVS, ID3D11PixelShader** outPS, ID3D11InputLayout** outLayout)
 {
     ID3DBlob* vsBlob = nullptr;
     ID3DBlob* psBlob = nullptr;
@@ -131,7 +145,7 @@ bool DX11Renderer::LoadCSOFile(const LPCWSTR filenameVS, const LPCWSTR filenameP
 
     m_device->CreateInputLayout(
         &inLayout,
-        ARRAYSIZE(layout),
+        layoutCount,
         vsBlob->GetBufferPointer(),
         vsBlob->GetBufferSize(),
         outLayout
@@ -149,8 +163,14 @@ void DX11Renderer::CreateConstantBuffers()
     cbd.Usage = D3D11_USAGE_DEFAULT;
     cbd.ByteWidth = sizeof(float) * 16; // 4x4 matrix
     cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-
     m_device->CreateBuffer(&cbd, nullptr, &m_transformCB);
+
+    D3D11_BUFFER_DESC bd = {};
+    bd.Usage = D3D11_USAGE_DYNAMIC;
+    bd.ByteWidth = sizeof(float) * 7 * 2; // 2 vertices, each 7 floats
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    m_device->CreateBuffer(&bd, nullptr, &m_lineVB);
 }
 
 void DX11Renderer::CreateGeometry()
@@ -188,61 +208,25 @@ void DX11Renderer::CreateGeometry()
     m_device->CreateBuffer(&ibDesc, &ibData, &m_indexBuffer);
 }
 
-void DX11Renderer::DrawQuad(float x, float y, float scale)
-{
-    float world[16];
-    float view[16];
-    float proj[16];
-    float temp[16];
-    float mvp[16];
-
-    MakeWorldMatrix(x, y, scale, world);
-    MakeViewMatrix(m_camera, view);
-    MakeOrthoMatrix(m_camera.GetViewWidth() / m_camera.GetZoom(),
-        m_camera.GetViewHeight() / m_camera.GetZoom(),
-        proj);
-
-    Multiply(world, view, temp);
-    Multiply(temp, proj, mvp);
-
-    TransformCB cb;
-    memcpy(cb.m, mvp, sizeof(mvp));
-
-    m_context->UpdateSubresource(m_transformCB, 0, nullptr, &cb, 0, 0);
-    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
-
-    m_context->Draw(6, 0);
-}
-
 void DX11Renderer::DrawLine(const XMFLOAT2& a, const XMFLOAT2& b, const XMFLOAT4& color)
 {
-    struct LineVertex
-    {
-        float x, y, z;
-        float r, g, b, a;
-    };
-
     LineVertex verts[2] =
     {
         { a.x, a.y, 0.0f, color.x, color.y, color.z, color.w },
         { b.x, b.y, 0.0f, color.x, color.y, color.z, color.w }
     };
 
-    D3D11_BUFFER_DESC bd = {};
-    bd.Usage = D3D11_USAGE_IMMUTABLE;
-    bd.ByteWidth = sizeof(verts);
-    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    // --- Map persistent dynamic buffer ---
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    m_context->Map(m_lineVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    memcpy(mapped.pData, verts, sizeof(verts));
+    m_context->Unmap(m_lineVB, 0);
 
-    D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = verts;
-
-    ID3D11Buffer* vb = nullptr;
-    m_device->CreateBuffer(&bd, &initData, &vb);
-
+    // --- Bind line pipeline ---
     UINT stride = sizeof(LineVertex);
     UINT offset = 0;
 
-    m_context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
+    m_context->IASetVertexBuffers(0, 1, &m_lineVB, &stride, &offset);
     m_context->IASetInputLayout(m_lineLayout);
     m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
@@ -250,11 +234,9 @@ void DX11Renderer::DrawLine(const XMFLOAT2& a, const XMFLOAT2& b, const XMFLOAT4
     m_context->PSSetShader(m_linePS, nullptr, 0);
     m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
 
+    // --- Draw ---
     m_context->Draw(2, 0);
-
-    vb->Release();
 }
-
 
 void DX11Renderer::DrawGrid()
 {
@@ -322,12 +304,12 @@ void DX11Renderer::RenderFrame()
     m_context->UpdateSubresource(m_transformCB, 0, nullptr, &mvp, 0, 0);
 
     //
-    // --- Draw grid (uses line pipeline inside DrawLine) ---
+    // --- Draw grid (line pipeline inside DrawLine) ---
     //
     DrawGrid();
 
     //
-    // --- Draw axis lines ---
+    // --- Draw axes (also line pipeline) ---
     //
     {
         XMFLOAT4 xColor = { 1.0f, 0.2f, 0.2f, 1.0f };
@@ -355,16 +337,20 @@ void DX11Renderer::RenderFrame()
     m_context->PSSetShader(m_pixelShader, nullptr, 0);
     m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
 
+    assert(m_vertexBuffer); assert(m_indexBuffer); assert(sizeof(Vertex) == stride);
+
     //
     // --- Draw quad ---
-    //
+
     m_context->DrawIndexed(6, 0, 0);
+
 
     //
     // --- Present ---
     //
     m_swapChain->Present(1, 0);
 }
+
 
 void DX11Renderer::Shutdown()
 {
