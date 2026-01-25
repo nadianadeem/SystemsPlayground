@@ -25,6 +25,8 @@ public:
     void CreateConstantBuffers();
     void CreateGeometry();
     void DrawQuad(float x, float y, float scale);
+    void DrawLine(const XMFLOAT2& a, const XMFLOAT2& b, const XMFLOAT4& color);
+    void DrawGrid();
     void RenderFrame();
     XMFLOAT2 ScreenToWorld(int sx, int sy);
     void UpdateCamera(float dt);

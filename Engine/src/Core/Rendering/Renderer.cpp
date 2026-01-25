@@ -247,6 +247,7 @@ void DX11Renderer::LoadShaders()
         { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, sizeof(float) * 3,     D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
 
+
     m_device->CreateInputLayout(
         layout,
         ARRAYSIZE(layout),
@@ -283,6 +284,83 @@ void DX11Renderer::DrawQuad(float x, float y, float scale)
     m_context->Draw(6, 0);
 }
 
+void DX11Renderer::DrawLine(const XMFLOAT2& a, const XMFLOAT2& b, const XMFLOAT4& color)
+{
+    struct LineVertex
+    {
+        float x, y, z;
+        float r, g, b, a;
+    };
+
+    LineVertex verts[2] =
+    {
+        { a.x, a.y, 0.0f, color.x, color.y, color.z, color.w },
+        { b.x, b.y, 0.0f, color.x, color.y, color.z, color.w }
+    };
+
+    D3D11_BUFFER_DESC bd = {};
+    bd.Usage = D3D11_USAGE_DYNAMIC;
+    bd.ByteWidth = sizeof(verts);
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    D3D11_SUBRESOURCE_DATA initData = {};
+    initData.pSysMem = verts;
+
+    ID3D11Buffer* vb = nullptr;
+    m_device->CreateBuffer(&bd, &initData, &vb);
+
+    // Bind the line vertex buffer
+    UINT stride = sizeof(LineVertex);
+    UINT offset = 0;
+    m_context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
+
+    // Re-bind the input layout (this is the missing piece)
+    m_context->IASetInputLayout(m_inputLayout);
+
+    // Re-bind the topology (quad uses TRIANGLELIST)
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+    // Shaders + constant buffer
+    m_context->VSSetShader(m_vertexShader, nullptr, 0);
+    m_context->PSSetShader(m_pixelShader, nullptr, 0);
+    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
+
+    m_context->Draw(2, 0);
+
+    vb->Release();
+}
+
+void DX11Renderer::DrawGrid()
+{
+    float worldWidth = m_camera.viewWidth / m_camera.zoom;
+    float worldHeight = m_camera.viewHeight / m_camera.zoom;
+
+    float left = m_camera.x - worldWidth * 0.5f;
+    float right = m_camera.x + worldWidth * 0.5f;
+    float bottom = m_camera.y - worldHeight * 0.5f;
+    float top = m_camera.y + worldHeight * 0.5f;
+
+    int startX = (int)std::floor(left);
+    int endX = (int)std::ceil(right);
+    int startY = (int)std::floor(bottom);
+    int endY = (int)std::ceil(top);
+
+    XMFLOAT4 minorColor = { 0.25f, 0.25f, 0.25f, 1.0f };
+    XMFLOAT4 majorColor = { 0.45f, 0.45f, 0.45f, 1.0f };
+
+    for (int x = startX; x <= endX; x++)
+    {
+        const XMFLOAT4& c = (x % 10 == 0) ? majorColor : minorColor;
+        DrawLine({ (float)x, bottom }, { (float)x, top }, c);
+    }
+
+    for (int y = startY; y <= endY; y++)
+    {
+        const XMFLOAT4& c = (y % 10 == 0) ? majorColor : minorColor;
+        DrawLine({ left, (float)y }, { right, (float)y }, c);
+    }
+}
 
 void DX11Renderer::RenderFrame()
 {
@@ -328,7 +406,21 @@ void DX11Renderer::RenderFrame()
     m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
 
     // --- Draw ---
-    m_context->DrawIndexed(6, 0, 0);
+    DrawGrid();
+
+    // --- Draw Axis Lines ---
+    {
+        XMFLOAT4 xColor = { 1.0f, 0.2f, 0.2f, 1.0f }; // red
+        XMFLOAT4 yColor = { 0.2f, 1.0f, 0.2f, 1.0f }; // green
+
+        // X-axis (horizontal line at y = 0)
+        if (0 >= bottom && 0 <= top)
+            DrawLine({ left, 0.0f }, { right, 0.0f }, xColor);
+
+        // Y-axis (vertical line at x = 0)
+        if (0 >= left && 0 <= right)
+            DrawLine({ 0.0f, bottom }, { 0.0f, top }, yColor);
+    }
 
     // --- Present ---
     m_swapChain->Present(1, 0);

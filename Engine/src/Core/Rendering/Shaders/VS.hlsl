@@ -1,4 +1,3 @@
-// VS.hlsl
 struct VSInput
 {
     float3 pos : POSITION;
@@ -20,6 +19,6 @@ VSOutput main(VSInput input)
 {
     VSOutput o;
     o.pos = mul(uMVP, float4(input.pos, 1.0f));
-    o.color = input.color;
+    o.color = input.color; // this is fine
     return o;
 }
