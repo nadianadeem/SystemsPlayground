@@ -48,7 +48,7 @@ private:
     ID3D11VertexShader* m_vertexShader = nullptr;
     ID3D11PixelShader* m_pixelShader = nullptr;
 
-    D3D11_VIEWPORT m_viewport = {};
+    D3D11_VIEWPORT m_viewport;
     Camera2D m_camera;
     ID3D11Buffer* m_transformCB = nullptr;
 };

@@ -3,13 +3,13 @@
 #include "..\Structures\TransformCB.h"
 #include "..\Structures\Vertex.h"
 
-#include <windows.h>
-#include <d3d11.h>
-#include <dxgi.h>
-#include <d3dcompiler.h>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <algorithm>
+#include <d3dcompiler.h>
+#include <d3d11.h>
+#include <dxgi.h>
+#include <windows.h>
 
 ID3DBlob* CompileShader(const wchar_t* file, const char* entry, const char* model)
 {
@@ -219,6 +219,7 @@ void DX11Renderer::CreateGeometry()
 
 void DX11Renderer::LoadShaders() 
 {
+    //Done so we don't compile at runtime.
     ID3DBlob* vsBlob = nullptr;
     D3DReadFileToBlob(L"VS.cso", &vsBlob);
 
@@ -436,8 +437,18 @@ void DX11Renderer::OnMouseWheel(short delta)
 
 void DX11Renderer::Shutdown()
 {
+	m_hwnd = nullptr;
+	m_viewport = {};
+	m_camera = {};
+
     if (m_rtv)        m_rtv->Release();
     if (m_swapChain)  m_swapChain->Release();
     if (m_context)    m_context->Release();
     if (m_device)     m_device->Release();
+	if (m_vertexBuffer)   m_vertexBuffer->Release();
+	if (m_indexBuffer)    m_indexBuffer->Release();
+	if (m_inputLayout)    m_inputLayout->Release();
+	if (m_vertexShader)   m_vertexShader->Release();
+    if (m_pixelShader)    m_pixelShader->Release();
+	if (m_transformCB)   m_transformCB->Release();
 }
