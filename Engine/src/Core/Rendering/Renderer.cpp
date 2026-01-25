@@ -8,8 +8,8 @@
 #include <dxgi.h>
 #include <d3dcompiler.h>
 #include <chrono>
-
-#include <d3dcompiler.h>
+#include <cmath>
+#include <algorithm>
 
 ID3DBlob* CompileShader(const wchar_t* file, const char* entry, const char* model)
 {
@@ -101,67 +101,129 @@ void Multiply(const float a[16], const float b[16], float out[16])
 
 bool DX11Renderer::Init(HWND hwnd)
 {
-    // Create the swap chain + device + context
-    DXGI_SWAP_CHAIN_DESC scd = {};
-    scd.BufferCount = 1;
-    scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    scd.OutputWindow = hwnd;
-    scd.SampleDesc.Count = 1;
-    scd.Windowed = TRUE;
+    m_hwnd = hwnd;
 
-	m_hwnd = hwnd;
+    // 1. Create device, context, swap chain
+    DXGI_SWAP_CHAIN_DESC sd = {};
+    sd.BufferCount = 1;
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.OutputWindow = hwnd;
+    sd.SampleDesc.Count = 1;
+    sd.Windowed = TRUE;
 
-    {
-        HRESULT hr = D3D11CreateDeviceAndSwapChain(
-            nullptr,
-            D3D_DRIVER_TYPE_HARDWARE,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            D3D11_SDK_VERSION,
-            &scd,
-            &m_swapChain,
-            &m_device,
-            nullptr,
-            &m_context
-        );
+    UINT createFlags = 0;
 
-        if (FAILED(hr))
-            return false;
-    }
+    D3D_FEATURE_LEVEL featureLevel;
+    HRESULT hr = D3D11CreateDeviceAndSwapChain(
+        nullptr,
+        D3D_DRIVER_TYPE_HARDWARE,
+        nullptr,
+        createFlags,
+        nullptr,
+        0,
+        D3D11_SDK_VERSION,
+        &sd,
+        &m_swapChain,
+        &m_device,
+        &featureLevel,
+        &m_context
+    );
 
-
-	// Create Transform Constant Buffer
-    D3D11_BUFFER_DESC cbd = {};
-    cbd.Usage = D3D11_USAGE_DEFAULT;
-    cbd.ByteWidth = sizeof(TransformCB);
-    cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-
-    HRESULT hr = m_device->CreateBuffer(&cbd, nullptr, &m_transformCB);
     if (FAILED(hr))
         return false;
 
-    // Render Target View
+    // 2. Get backbuffer
     ID3D11Texture2D* backBuffer = nullptr;
-    m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+    hr = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+    if (FAILED(hr))
+        return false;
 
+    // 3. Create RTV
     hr = m_device->CreateRenderTargetView(backBuffer, nullptr, &m_rtv);
     backBuffer->Release();
-
     if (FAILED(hr))
         return false;
 
-    // Compile shaders
+    // 4. Bind RTV
+    m_context->OMSetRenderTargets(1, &m_rtv, nullptr);
+
+    // 5. NOW set viewport (correct placement)
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+
+    m_viewport.TopLeftX = 0;
+    m_viewport.TopLeftY = 0;
+    m_viewport.Width = float(rc.right - rc.left);
+    m_viewport.Height = float(rc.bottom - rc.top);
+    m_viewport.MinDepth = 0.0f;
+    m_viewport.MaxDepth = 1.0f;
+
+    m_context->RSSetViewports(1, &m_viewport);
+
+    // 6. Load/compile shaders (your existing code)
+    LoadShaders();
+
+    // 7. Create input layout, buffers, etc.
+    CreateGeometry();
+    CreateConstantBuffers();
+
+    return true;
+}
+
+void DX11Renderer::CreateConstantBuffers()
+{
+    D3D11_BUFFER_DESC cbd = {};
+    cbd.Usage = D3D11_USAGE_DEFAULT;
+    cbd.ByteWidth = sizeof(float) * 16; // 4x4 matrix
+    cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+    m_device->CreateBuffer(&cbd, nullptr, &m_transformCB);
+}
+
+void DX11Renderer::CreateGeometry()
+{
+    Vertex verts[] =
+    {
+        { -0.5f, -0.5f, 0.0f,   1, 0, 0, 1 },
+        { -0.5f,  0.5f, 0.0f,   0, 1, 0, 1 },
+        {  0.5f,  0.5f, 0.0f,   0, 0, 1, 1 },
+        {  0.5f, -0.5f, 0.0f,   1, 1, 0, 1 },
+    };
+
+    uint32_t indices[] = { 0, 1, 2, 0, 2, 3 };
+
+    // VB
+    D3D11_BUFFER_DESC vbDesc = {};
+    vbDesc.Usage = D3D11_USAGE_DEFAULT;
+    vbDesc.ByteWidth = sizeof(verts);
+    vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+    D3D11_SUBRESOURCE_DATA vbData = {};
+    vbData.pSysMem = verts;
+
+    m_device->CreateBuffer(&vbDesc, &vbData, &m_vertexBuffer);
+
+    // IB
+    D3D11_BUFFER_DESC ibDesc = {};
+    ibDesc.Usage = D3D11_USAGE_DEFAULT;
+    ibDesc.ByteWidth = sizeof(indices);
+    ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+    D3D11_SUBRESOURCE_DATA ibData = {};
+    ibData.pSysMem = indices;
+
+    m_device->CreateBuffer(&ibDesc, &ibData, &m_indexBuffer);
+}
+
+
+void DX11Renderer::LoadShaders() 
+{
     ID3DBlob* vsBlob = nullptr;
     D3DReadFileToBlob(L"VS.cso", &vsBlob);
 
     ID3DBlob* psBlob = nullptr;
     D3DReadFileToBlob(L"PS.cso", &psBlob);
-
-    if (!vsBlob || !psBlob)
-        return false;
 
     m_device->CreateVertexShader(
         vsBlob->GetBufferPointer(),
@@ -177,59 +239,21 @@ bool DX11Renderer::Init(HWND hwnd)
         &m_pixelShader
     );
 
-    //
-    // 4. Create input layout
-    //
+    // after creating m_vertexShader:
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,                      D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, sizeof(float) * 3,     D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
 
     m_device->CreateInputLayout(
         layout,
-        2,
+        ARRAYSIZE(layout),
         vsBlob->GetBufferPointer(),
         vsBlob->GetBufferSize(),
         &m_inputLayout
     );
 
-    vsBlob->Release();
-    psBlob->Release();
-
-    //
-    // 5. Create a quad vertex buffer
-    //
-    Vertex vertices[] =
-    {
-        { -0.5f,  0.5f, 0.0f,  1, 0, 0, 1 },
-        {  0.5f,  0.5f, 0.0f,  0, 1, 0, 1 },
-        {  0.5f, -0.5f, 0.0f,  0, 0, 1, 1 },
-
-        { -0.5f,  0.5f, 0.0f,  1, 0, 0, 1 },
-        {  0.5f, -0.5f, 0.0f,  0, 0, 1, 1 },
-        { -0.5f, -0.5f, 0.0f,  1, 1, 0, 1 },
-    };
-
-    D3D11_BUFFER_DESC bd = {};
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(vertices);
-    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-    D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = vertices;
-
-    hr = m_device->CreateBuffer(&bd, &initData, &m_vertexBuffer);
-    if (FAILED(hr))
-        return false;
-
-    m_camera.x = 0.0f;
-    m_camera.y = 0.0f;
-    m_camera.zoom = 1.0f;
-    m_camera.viewWidth = 2.0f;
-    m_camera.viewHeight = 2.0f;
-
-    return true;
 }
 
 void DX11Renderer::DrawQuad(float x, float y, float scale)
@@ -261,69 +285,65 @@ void DX11Renderer::DrawQuad(float x, float y, float scale)
 
 void DX11Renderer::RenderFrame()
 {
-    using clock = std::chrono::steady_clock;
-    static auto last = clock::now();
-
-    auto now = clock::now();
-    float dt = std::chrono::duration<float>(now - last).count();
-    last = now;
-
-    UpdateCamera(dt);
-
-    // 1. Bind the render target
-    m_context->OMSetRenderTargets(1, &m_rtv, nullptr);
-    m_context->RSSetViewports(1, &m_viewport);
-
-    // 2. Clear the screen
-    float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
+    // --- Clear screen ---
+    float clearColor[4] = { 0.1f, 0.1f, 0.3f, 1.0f };
     m_context->ClearRenderTargetView(m_rtv, clearColor);
 
-    // 3. Set the viewport
-    D3D11_VIEWPORT vp = {};
-    vp.TopLeftX = 0;
-    vp.TopLeftY = 0;
-    
-	RECT rc;
-	GetClientRect(m_hwnd, &rc);
-	vp.Width = static_cast<FLOAT>(rc.right - rc.left);
-	vp.Height = static_cast<FLOAT>(rc.bottom - rc.top);
+    // --- Ensure viewport is set every frame ---
+    m_context->RSSetViewports(1, &m_viewport);
 
-    vp.MinDepth = 0.0f;
-    vp.MaxDepth = 1.0f;
-    m_context->RSSetViewports(1, &vp);
+	// --- Build MVP matrix based on camera ---
+    float halfW = (m_camera.viewWidth * 0.5f) / m_camera.zoom;
+    float halfH = (m_camera.viewHeight * 0.5f) / m_camera.zoom;
 
-    // 4. Bind the pipeline state
+    float left = m_camera.x - halfW;
+    float right = m_camera.x + halfW;
+    float bottom = m_camera.y - halfH;
+    float top = m_camera.y + halfH;
+
+    XMMATRIX proj = XMMatrixOrthographicOffCenterLH(left, right, bottom, top, 0.0f, 1.0f);
+    XMMATRIX view = XMMatrixIdentity();
+    XMMATRIX model = XMMatrixIdentity();
+
+    XMMATRIX mvp = model * view * proj;
+
+    // Upload to constant buffer
+    m_context->UpdateSubresource(m_transformCB, 0, nullptr, &mvp, 0, 0);
+
+    // --- Bind pipeline state ---
     m_context->IASetInputLayout(m_inputLayout);
-    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
-    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
-
     m_context->VSSetShader(m_vertexShader, nullptr, 0);
     m_context->PSSetShader(m_pixelShader, nullptr, 0);
 
-    for (int y = 0; y < 10; y++)
-    {
-        for (int x = 0; x < 10; x++)
-        {
-            float px = (x - 5) * 0.2f;
-            float py = (y - 5) * 0.2f;
-            DrawQuad(px, py, 0.1f);
-        }
-    }
+    // --- Bind geometry ---
+    UINT stride = sizeof(float) * 7; // 3 pos + 4 color
+    UINT offset = 0;
 
-    // 6. Present the frame
+    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+    m_context->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // --- Bind constant buffer ---
+    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
+
+    // --- Draw ---
+    m_context->DrawIndexed(6, 0, 0);
+
+    // --- Present ---
     m_swapChain->Present(1, 0);
 }
+
 
 XMFLOAT2 DX11Renderer::ScreenToWorld(int sx, int sy)
 {
     float ndcX = (2.0f * sx / m_viewport.Width) - 1.0f;
     float ndcY = 1.0f - (2.0f * sy / m_viewport.Height);
 
-    float worldX = m_camera.x + ndcX * (m_camera.viewWidth / m_camera.zoom) * 0.5f;
-    float worldY = m_camera.y + ndcY * (m_camera.viewHeight / m_camera.zoom) * 0.5f;
+    float worldWidth = m_camera.viewWidth / m_camera.zoom;
+    float worldHeight = m_camera.viewHeight / m_camera.zoom;
+
+    float worldX = m_camera.x + ndcX * (worldWidth * 0.5f);
+    float worldY = m_camera.y + ndcY * (worldHeight * 0.5f);
 
     return { worldX, worldY };
 }
@@ -356,37 +376,62 @@ void DX11Renderer::UpdateCamera(float dt)
     // Clamp zoom so it never flips or goes negative
     if (m_camera.zoom < 0.1f)
         m_camera.zoom = 0.1f;
+
+    if (!std::isfinite(m_camera.x)) m_camera.x = 0.0f;
+    if (!std::isfinite(m_camera.y)) m_camera.y = 0.0f;
+    if (!std::isfinite(m_camera.zoom)) m_camera.zoom = 1.0f;
 }
 
 void DX11Renderer::OnMouseMove(int x, int y)
 {
     if (!m_middleDown)
+    {
+        m_lastMousePos.x = x;
+        m_lastMousePos.y = y;
         return;
+    }
 
-    POINT current;
-    current.x = x;
-    current.y = y;
+    int dx = x - m_lastMousePos.x;
+    int dy = y - m_lastMousePos.y;
 
-    float dx = float(current.x - m_lastMousePos.x);
-    float dy = float(current.y - m_lastMousePos.y);
+    m_lastMousePos.x = x;
+    m_lastMousePos.y = y;
 
-    // Convert screen movement to world movement
-    float worldPerPixelX = (m_camera.viewWidth / m_camera.zoom) / m_viewport.Width;
-    float worldPerPixelY = (m_camera.viewHeight / m_camera.zoom) / m_viewport.Height;
+    // Convert pixel delta to world delta
+    float worldWidth = m_camera.viewWidth / m_camera.zoom;
+    float worldHeight = m_camera.viewHeight / m_camera.zoom;
 
+    float worldPerPixelX = worldWidth / m_viewport.Width;
+    float worldPerPixelY = worldHeight / m_viewport.Height;
+
+    // Move camera opposite to mouse drag
     m_camera.x -= dx * worldPerPixelX;
-    m_camera.y += dy * worldPerPixelY; // invert Y
-
-    m_lastMousePos = current;
+    m_camera.y += dy * worldPerPixelY; // + because screen Y is inverted
 }
 
 void DX11Renderer::OnMouseWheel(short delta)
 {
-    float zoomFactor = 1.0f + (delta / 120.0f) * 0.1f;
+    // Get cursor in client space
+    POINT p;
+    GetCursorPos(&p);
+    ScreenToClient(m_hwnd, &p);
+
+    // World position before zoom
+    XMFLOAT2 before = ScreenToWorld(p.x, p.y);
+
+    // Logarithmic zoom
+    float zoomFactor = std::exp((delta / 120.0f) * 0.1f);
     m_camera.zoom *= zoomFactor;
 
-    if (m_camera.zoom < 0.1f)
-        m_camera.zoom = 0.1f;
+    // Clamp zoom to safe range
+    m_camera.zoom = std::clamp(m_camera.zoom, 0.5f, 4.0f);
+
+    // World position after zoom
+    XMFLOAT2 after = ScreenToWorld(p.x, p.y);
+
+    // Shift camera so the point stays under the cursor
+    m_camera.x += (before.x - after.x);
+    m_camera.y += (before.y - after.y);
 }
 
 void DX11Renderer::Shutdown()

@@ -1,5 +1,11 @@
-
-float4 main(float4 color : COLOR) : SV_TARGET
+// PS.hlsl
+struct PSInput
 {
-    return color;
+    float4 pos : SV_POSITION;
+    float4 color : COLOR;
+};
+
+float4 main(PSInput input) : SV_TARGET
+{
+    return input.color;
 }

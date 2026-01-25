@@ -12,8 +12,8 @@ struct Camera2D
     float zoom = 1.0f;
 
     // World units visible at zoom = 1
-    float viewWidth = 20.0f;
-    float viewHeight = 20.0f;
+    float viewWidth = 30.0f;
+    float viewHeight = 30.0f;
 };
 
 
@@ -21,6 +21,9 @@ class DX11Renderer
 {
 public:
     bool Init(HWND hwnd);
+    void LoadShaders();
+    void CreateConstantBuffers();
+    void CreateGeometry();
     void DrawQuad(float x, float y, float scale);
     void RenderFrame();
     XMFLOAT2 ScreenToWorld(int sx, int sy);
@@ -40,6 +43,7 @@ private:
     HWND m_hwnd = nullptr;
 
     ID3D11Buffer* m_vertexBuffer = nullptr;
+    ID3D11Buffer* m_indexBuffer = nullptr;
     ID3D11InputLayout* m_inputLayout = nullptr;
     ID3D11VertexShader* m_vertexShader = nullptr;
     ID3D11PixelShader* m_pixelShader = nullptr;

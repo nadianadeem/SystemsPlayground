@@ -1,24 +1,25 @@
-cbuffer TransformCB : register(b0)
-{
-    row_major float4x4 transform;
-};
-
+// VS.hlsl
 struct VSInput
 {
     float3 pos : POSITION;
-    float4 col : COLOR;
+    float4 color : COLOR;
 };
 
-struct PSInput
+struct VSOutput
 {
     float4 pos : SV_POSITION;
-    float4 col : COLOR;
+    float4 color : COLOR;
 };
 
-PSInput main(VSInput input)
+cbuffer MVP : register(b0)
 {
-    PSInput output;
-    output.pos = mul(float4(input.pos, 1.0f), transform);
-    output.col = input.col;
-    return output;
+    float4x4 uMVP;
+};
+
+VSOutput main(VSInput input)
+{
+    VSOutput o;
+    o.pos = mul(uMVP, float4(input.pos, 1.0f));
+    o.color = input.color;
+    return o;
 }
