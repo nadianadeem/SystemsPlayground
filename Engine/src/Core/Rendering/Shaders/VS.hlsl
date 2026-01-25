@@ -1,24 +1,24 @@
+cbuffer TransformCB : register(b0)
+{
+    row_major float4x4 transform;
+};
+
 struct VSInput
 {
     float3 pos : POSITION;
-    float4 color : COLOR;
+    float4 col : COLOR;
 };
 
-struct VSOutput
+struct PSInput
 {
     float4 pos : SV_POSITION;
-    float4 color : COLOR;
+    float4 col : COLOR;
 };
 
-cbuffer MVP : register(b0)
+PSInput main(VSInput input)
 {
-    float4x4 uMVP;
-};
-
-VSOutput main(VSInput input)
-{
-    VSOutput o;
-    o.pos = mul(uMVP, float4(input.pos, 1.0f));
-    o.color = input.color; // this is fine
-    return o;
+    PSInput output;
+    output.pos = mul(float4(input.pos, 1.0f), transform);
+    output.col = input.col;
+    return output;
 }

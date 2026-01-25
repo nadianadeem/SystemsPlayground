@@ -64,5 +64,11 @@
     <FxCompile Include="src\Core\Rendering\Shaders\VS.hlsl">
       <Filter>Header Files\Shader Files</Filter>
     </FxCompile>
+    <FxCompile Include="LineVS.hlsl">
+      <Filter>Header Files\Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="LinePS.hlsl">
+      <Filter>Header Files\Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

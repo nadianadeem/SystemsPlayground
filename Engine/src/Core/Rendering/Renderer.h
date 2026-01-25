@@ -22,6 +22,7 @@ class DX11Renderer
 public:
     bool Init(HWND hwnd);
     void LoadShaders();
+    void LoadLineShaders();
     void CreateConstantBuffers();
     void CreateGeometry();
     void DrawQuad(float x, float y, float scale);
@@ -49,6 +50,10 @@ private:
     ID3D11InputLayout* m_inputLayout = nullptr;
     ID3D11VertexShader* m_vertexShader = nullptr;
     ID3D11PixelShader* m_pixelShader = nullptr;
+
+    ID3D11VertexShader* m_lineVS = nullptr;
+    ID3D11PixelShader* m_linePS = nullptr;
+    ID3D11InputLayout* m_lineLayout = nullptr;
 
     D3D11_VIEWPORT m_viewport;
     Camera2D m_camera;

@@ -163,6 +163,7 @@ bool DX11Renderer::Init(HWND hwnd)
 
     // 6. Load/compile shaders (your existing code)
     LoadShaders();
+    LoadLineShaders();
 
     // 7. Create input layout, buffers, etc.
     CreateGeometry();
@@ -247,7 +248,6 @@ void DX11Renderer::LoadShaders()
         { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, sizeof(float) * 3,     D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
 
-
     m_device->CreateInputLayout(
         layout,
         ARRAYSIZE(layout),
@@ -257,6 +257,49 @@ void DX11Renderer::LoadShaders()
     );
 
 }
+
+void DX11Renderer::LoadLineShaders()
+{
+    ID3DBlob* vsBlob = nullptr;
+    ID3DBlob* psBlob = nullptr;
+
+    D3DReadFileToBlob(L"LineVS.cso", &vsBlob);
+    D3DReadFileToBlob(L"LinePS.cso", &psBlob);
+
+    m_device->CreateVertexShader(
+        vsBlob->GetBufferPointer(),
+        vsBlob->GetBufferSize(),
+        nullptr,
+        &m_lineVS
+    );
+
+    m_device->CreatePixelShader(
+        psBlob->GetBufferPointer(),
+        psBlob->GetBufferSize(),
+        nullptr,
+        &m_linePS
+    );
+
+    D3D11_INPUT_ELEMENT_DESC layout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+          D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12,
+          D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    };
+
+    m_device->CreateInputLayout(
+        layout,
+        ARRAYSIZE(layout),
+        vsBlob->GetBufferPointer(),
+        vsBlob->GetBufferSize(),
+        &m_lineLayout
+    );
+
+    vsBlob->Release();
+    psBlob->Release();
+}
+
 
 void DX11Renderer::DrawQuad(float x, float y, float scale)
 {
@@ -299,10 +342,9 @@ void DX11Renderer::DrawLine(const XMFLOAT2& a, const XMFLOAT2& b, const XMFLOAT4
     };
 
     D3D11_BUFFER_DESC bd = {};
-    bd.Usage = D3D11_USAGE_DYNAMIC;
+    bd.Usage = D3D11_USAGE_IMMUTABLE;
     bd.ByteWidth = sizeof(verts);
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
     D3D11_SUBRESOURCE_DATA initData = {};
     initData.pSysMem = verts;
@@ -310,26 +352,22 @@ void DX11Renderer::DrawLine(const XMFLOAT2& a, const XMFLOAT2& b, const XMFLOAT4
     ID3D11Buffer* vb = nullptr;
     m_device->CreateBuffer(&bd, &initData, &vb);
 
-    // Bind the line vertex buffer
     UINT stride = sizeof(LineVertex);
     UINT offset = 0;
+
     m_context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
-
-    // Re-bind the input layout (this is the missing piece)
-    m_context->IASetInputLayout(m_inputLayout);
-
-    // Re-bind the topology (quad uses TRIANGLELIST)
+    m_context->IASetInputLayout(m_lineLayout);
     m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
-    // Shaders + constant buffer
-    m_context->VSSetShader(m_vertexShader, nullptr, 0);
-    m_context->PSSetShader(m_pixelShader, nullptr, 0);
+    m_context->VSSetShader(m_lineVS, nullptr, 0);
+    m_context->PSSetShader(m_linePS, nullptr, 0);
     m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
 
     m_context->Draw(2, 0);
 
     vb->Release();
 }
+
 
 void DX11Renderer::DrawGrid()
 {
@@ -364,14 +402,20 @@ void DX11Renderer::DrawGrid()
 
 void DX11Renderer::RenderFrame()
 {
+    //
     // --- Clear screen ---
-    float clearColor[4] = { 0.1f, 0.1f, 0.3f, 1.0f };
+    //
+    const float clearColor[4] = { 0.1f, 0.1f, 0.3f, 1.0f };
     m_context->ClearRenderTargetView(m_rtv, clearColor);
 
-    // --- Ensure viewport is set every frame ---
+    //
+    // --- Ensure viewport is active ---
+    //
     m_context->RSSetViewports(1, &m_viewport);
 
-	// --- Build MVP matrix based on camera ---
+    //
+    // --- Build MVP matrix from camera ---
+    //
     float halfW = (m_camera.viewWidth * 0.5f) / m_camera.zoom;
     float halfH = (m_camera.viewHeight * 0.5f) / m_camera.zoom;
 
@@ -383,48 +427,58 @@ void DX11Renderer::RenderFrame()
     XMMATRIX proj = XMMatrixOrthographicOffCenterLH(left, right, bottom, top, 0.0f, 1.0f);
     XMMATRIX view = XMMatrixIdentity();
     XMMATRIX model = XMMatrixIdentity();
-
     XMMATRIX mvp = model * view * proj;
 
-    // Upload to constant buffer
+    //
+    // --- Upload MVP to constant buffer ---
+    //
     m_context->UpdateSubresource(m_transformCB, 0, nullptr, &mvp, 0, 0);
 
-    // --- Bind pipeline state ---
-    m_context->IASetInputLayout(m_inputLayout);
-    m_context->VSSetShader(m_vertexShader, nullptr, 0);
-    m_context->PSSetShader(m_pixelShader, nullptr, 0);
-
-    // --- Bind geometry ---
-    UINT stride = sizeof(float) * 7; // 3 pos + 4 color
-    UINT offset = 0;
-
-    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
-    m_context->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    // --- Bind constant buffer ---
-    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
-
-    // --- Draw ---
+    //
+    // --- Draw grid (uses line pipeline inside DrawLine) ---
+    //
     DrawGrid();
 
-    // --- Draw Axis Lines ---
+    //
+    // --- Draw axis lines ---
+    //
     {
-        XMFLOAT4 xColor = { 1.0f, 0.2f, 0.2f, 1.0f }; // red
-        XMFLOAT4 yColor = { 0.2f, 1.0f, 0.2f, 1.0f }; // green
+        XMFLOAT4 xColor = { 1.0f, 0.2f, 0.2f, 1.0f };
+        XMFLOAT4 yColor = { 0.2f, 1.0f, 0.2f, 1.0f };
 
-        // X-axis (horizontal line at y = 0)
         if (0 >= bottom && 0 <= top)
             DrawLine({ left, 0.0f }, { right, 0.0f }, xColor);
 
-        // Y-axis (vertical line at x = 0)
         if (0 >= left && 0 <= right)
             DrawLine({ 0.0f, bottom }, { 0.0f, top }, yColor);
     }
 
+    //
+    // --- Switch to quad pipeline ---
+    //
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+
+    m_context->IASetInputLayout(m_inputLayout);
+    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+    m_context->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    m_context->VSSetShader(m_vertexShader, nullptr, 0);
+    m_context->PSSetShader(m_pixelShader, nullptr, 0);
+    m_context->VSSetConstantBuffers(0, 1, &m_transformCB);
+
+    //
+    // --- Draw quad ---
+    //
+    m_context->DrawIndexed(6, 0, 0);
+
+    //
     // --- Present ---
+    //
     m_swapChain->Present(1, 0);
 }
+
 
 
 XMFLOAT2 DX11Renderer::ScreenToWorld(int sx, int sy)
